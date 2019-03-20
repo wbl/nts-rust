@@ -30,8 +30,8 @@ fn main() {
     return;
   }
 
-  if let Some(_nts_ke) = matches.subcommand_matches("nts-ke") {
-    let config_file = _nts_ke.value_of("config_file").unwrap();
+  if let Some(nts_ke) = matches.subcommand_matches("nts-ke") {
+    let config_file = nts_ke.value_of("config_file").unwrap();
     start_nts_ke_server(config_file);
   }
 

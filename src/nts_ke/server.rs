@@ -3,8 +3,7 @@ use std::net::ToSocketAddrs;
 
 use tokio_rustls::{
   rustls::{
-      internal::pemfile::{certs, pkcs8_private_keys},
-      NoClientAuth, ServerConfig,
+    NoClientAuth, ServerConfig,
   },
   TlsAcceptor,
 };
@@ -16,21 +15,24 @@ use tokio::prelude::{Future, Stream};
 use crate::config::parse_nts_ke_config;
 
 pub fn start_nts_ke_server(config_filename: &str) {
-  let mut parsedConfig = parse_nts_ke_config(config_filename);
-  println!("{:?}", parsedConfig);
+  // First parse config for TLS server using local config module.
+  let mut parsed_config = parse_nts_ke_config(config_filename);
 
-  let mut serverConfig = ServerConfig::new(NoClientAuth::new());
-  serverConfig
-    .set_single_cert(parsedConfig.tls_certs, parsedConfig.tls_keys.remove(0))
+  let mut server_config = ServerConfig::new(NoClientAuth::new());
+  server_config
+    .set_single_cert(parsed_config.tls_certs, parsed_config.tls_keys.remove(0))
     .expect("invalid key or certificate");
-  let config = TlsAcceptor::from(Arc::new(serverConfig));
+  let config = TlsAcceptor::from(Arc::new(server_config));
 
-  let addr = parsedConfig.addr
+  let addr = parsed_config.addr
     .to_socket_addrs()
     .unwrap()
     .next()
     .unwrap();
+
   let socket = TcpListener::bind(&addr).unwrap();
+
+  // Now, actually setup TLS server behavior.
   let done = socket.incoming().for_each(move |conn| {
     let addr = conn.peer_addr().ok();
     let done = config
@@ -48,10 +50,11 @@ pub fn start_nts_ke_server(config_filename: &str) {
       .and_then(|(stream, _)| io::flush(stream))
       .map(move |_| println!("Accept: {:?}", addr))
       .map_err(move |err| println!("Error: {:?}-{:?}", err, addr));
-
     tokio::spawn(done);
     Ok(())
   });
 
+  // Run TLS server.
+  println!("Starting NTS-KE server over TCP/TLS on {:?}", addr);
   tokio::run(done.map_err(drop))
 }

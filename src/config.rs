@@ -1,13 +1,12 @@
 use std::io::BufReader;
 use std::fs;
-use std::collections::HashMap;
 
 use config::Config;
 
 use tokio_rustls::{
   rustls::{
-      internal::pemfile::{certs, pkcs8_private_keys},
-      Certificate, PrivateKey,
+    internal::pemfile::{certs, pkcs8_private_keys},
+    Certificate, PrivateKey,
   },
 };
 
@@ -37,7 +36,6 @@ fn load_cookie_key(path: String) -> Vec<u8> {
   fs::read(path).expect("Unable to read file")
 }
 
-// pub fn parse_nts_ke_config(config_filename: &str) -> ConfigNTSKE {
 pub fn parse_nts_ke_config(config_filename: &str) -> ConfigNTSKE {
   let mut settings = Config::default();
   settings.merge(config::File::with_name(config_filename)).unwrap();
