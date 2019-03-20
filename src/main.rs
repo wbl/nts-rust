@@ -1,3 +1,7 @@
+#[macro_use]
+extern crate futures;
+extern crate tokio;
+
 mod config;
 mod nts_ke;
 mod ntp;
@@ -7,6 +11,7 @@ use clap::Arg;
 use clap::SubCommand;
 
 use crate::nts_ke::server::start_nts_ke_server;
+use crate::ntp::server::start_ntp_server;
 
 fn app() -> App<'static, 'static> {
   App::new("cf-nts")
@@ -35,8 +40,10 @@ fn main() {
     start_nts_ke_server(config_file);
   }
 
-  if let Some(_ntp) = matches.subcommand_matches("ntp") {
-    let config_file = matches.value_of("config_file").unwrap();
-    println!("todo: finish implementing UDP server!");
+  if let Some(ntp) = matches.subcommand_matches("ntp") {
+    let config_file = ntp.value_of("config_file").unwrap();
+    if let Err(err) = start_ntp_server(config_file) {
+      println!("Starting UDP server failed: {}", err);
+    }
   }
 }
