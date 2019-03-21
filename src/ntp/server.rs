@@ -1,11 +1,11 @@
-use crate::config::parse_ntp_config;
-
-use std::net::SocketAddr;
-use std::net::ToSocketAddrs;
-use std::io;
-
 use tokio::net::UdpSocket;
 use tokio::prelude::*;
+
+use std::net::SocketAddr;
+use std::io;
+
+use crate::config::parse_ntp_config;
+use crate::util::get_socket_addr_from_str;
 
 // TODO: perhaps https://github.com/tokio-rs/tokio/blob/master/examples/udp-codec.rs would be a good example to look at
 // for implementing a server that can handle a custom protocol.
@@ -38,19 +38,17 @@ impl Future for Server {
     }
 }
 
-
 pub fn start_ntp_server(config_filename: &str) -> Result<(), Box<std::error::Error>> {
   // First parse config for TLS server using local config module.
-  let parsed_config = parse_ntp_config(config_filename);
+  let parsed_config = match parse_ntp_config(config_filename) {
+    Ok(c)  => { c }
+    Err(e) => { panic!(e.to_string()) }
+  };
 
-  let addr = parsed_config.addr
-    .to_socket_addrs()
-    .unwrap()
-    .next()
-    .unwrap();
+  let addr = get_socket_addr_from_str(&parsed_config.addr);
 
   let socket = UdpSocket::bind(&addr)?;
-  println!("Listening on: {}", socket.local_addr()?);
+  println!("UDP NTP server listening on: {}", socket.local_addr()?);
 
   let server = Server {
         socket: socket,
