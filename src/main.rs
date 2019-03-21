@@ -1,10 +1,10 @@
-#[macro_use]
-extern crate futures;
+#[macro_use] extern crate futures;
 extern crate tokio;
 
 mod config;
 mod nts_ke;
 mod ntp;
+mod util;
 
 use clap::App;
 use clap::Arg;
@@ -36,11 +36,13 @@ fn main() {
   }
 
   if let Some(nts_ke) = matches.subcommand_matches("nts-ke") {
-    let config_file = nts_ke.value_of("config_file").unwrap();
+    // We can use unwrap because config_file is already checked for inclusion by the App struct (cannot be non-empty)
+    let config_file = nts_ke.value_of("config_file").unwrap(); 
     start_nts_ke_server(config_file);
   }
 
   if let Some(ntp) = matches.subcommand_matches("ntp") {
+    // Same logic for using unwrap() above applies here.
     let config_file = ntp.value_of("config_file").unwrap();
     if let Err(err) = start_ntp_server(config_file) {
       println!("Starting UDP server failed: {}", err);
