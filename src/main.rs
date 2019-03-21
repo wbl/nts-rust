@@ -3,6 +3,7 @@ extern crate futures;
 extern crate tokio;
 
 mod config;
+mod cookie;
 mod ntp;
 mod nts_ke;
 
