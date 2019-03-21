@@ -64,7 +64,11 @@ pub fn start_nts_ke_server(config_filename: &str) {
         let addr = conn.peer_addr().ok();
         let done = config
             .accept(conn)
-            .map(gen_key_from_channel)
+            .and_then(|stream| {
+                let buf: Vec<u8> = Vec::new();
+                io::read_to_end(stream, buf)
+            })
+            .map(|(stream, buf)| gen_key_from_channel(stream))
             .and_then(|stream| {
                 io::write_all(
                     stream,
