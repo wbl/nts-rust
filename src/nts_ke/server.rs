@@ -6,7 +6,6 @@ use std::string::String;
 extern crate rustls;
 use crate::nts_ke::server::rustls::Session;
 use rustls::TLSError;
-use tokio_rustls::server::TlsStream;
 
 use tokio_rustls::{
     rustls::{NoClientAuth, ServerConfig},
@@ -30,7 +29,7 @@ struct NtsKeRecord {
 
 fn serialize_record(rec: &mut NtsKeRecord) -> Vec<u8> {
     let mut out: Vec<u8> = Vec::new();
-    let mut our_type = 0;
+    let our_type: u16;
     if rec.critical {
         our_type = 1 << 15 + rec.record_type;
     } else {
@@ -46,7 +45,7 @@ fn serialize_record(rec: &mut NtsKeRecord) -> Vec<u8> {
 fn gen_key_from_channel<T: AsyncRead + AsyncWrite>(
     stream: tokio_rustls::server::TlsStream<T>,
 ) -> (tokio_rustls::server::TlsStream<T>, NTSKeys) {
-    let (inner, server_session) = stream.get_ref();
+    let (_underlying, server_session) = stream.get_ref();
     let res = gen_key(server_session).expect("Failure to generate keys");
     return (stream, res);
 }
@@ -126,7 +125,7 @@ pub fn start_nts_ke_server(config_filename: &str) {
                 let buf: Vec<u8> = Vec::new();
                 io::read_to_end(socket, buf)
             })
-            .map(|(socket, buf)| gen_key_from_channel(socket))
+            .map(|(socket, _buf)| gen_key_from_channel(socket))
             .and_then(|(socket, key)| io::write_all(socket, response(key, real_key)))
             .and_then(|(stream, _)| io::flush(stream))
             .map(move |_| println!("Accept: {:?}", addr))
