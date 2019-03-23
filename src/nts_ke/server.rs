@@ -99,7 +99,7 @@ pub fn start_nts_ke_server(config_filename: &str) {
     let master_key = parsed_config.cookie_key;
     let real_key = Arc::new(RwLock::new(master_key));
     let mut server_config = ServerConfig::new(NoClientAuth::new());
-    let mut alpn_proto = String::from("ntske/1");
+    let alpn_proto = String::from("ntske/1");
     let alpn_bytes = alpn_proto.into_bytes();
     server_config
         .set_single_cert(parsed_config.tls_certs, parsed_config.tls_keys[0].clone())
