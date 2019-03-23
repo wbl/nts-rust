@@ -1,6 +1,7 @@
 use std::net::ToSocketAddrs;
 use std::sync::{Arc, RwLock};
 use std::vec::Vec;
+use std::string::String;
 
 extern crate rustls;
 use crate::nts_ke::server::rustls::Session;
@@ -59,7 +60,7 @@ fn gen_key(session: &rustls::ServerSession) -> Result<NTSKeys, TLSError> {
     let s2c_con = [0, 0, 0, 15, 01];
     let context_c2s = Some(&c2s_con[..]);
     let context_s2c = Some(&s2c_con[..]);
-    let label = "EXPORTER-network-time-security/1".as_bytes();
+    let label = "EXPORTER-nts/1".as_bytes();
     session.export_keying_material(&mut keys.c2s, label, context_c2s)?;
     session.export_keying_material(&mut keys.s2c, label, context_s2c)?;
 
@@ -98,9 +99,12 @@ pub fn start_nts_ke_server(config_filename: &str) {
     let master_key = parsed_config.cookie_key;
     let real_key = Arc::new(RwLock::new(master_key));
     let mut server_config = ServerConfig::new(NoClientAuth::new());
+    let mut alpn_proto = String::from("ntske/1");
+    let alpn_bytes = alpn_proto.into_bytes();
     server_config
         .set_single_cert(parsed_config.tls_certs, parsed_config.tls_keys[0].clone())
         .expect("invalid key or certificate");
+    server_config.set_protocols(&[alpn_bytes]);
     let config = TlsAcceptor::from(Arc::new(server_config));
 
     let addr = parsed_config
