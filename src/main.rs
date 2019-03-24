@@ -55,8 +55,8 @@ fn main() {
     }
 
     if let Some(ntske_client) = matches.subcommand_matches("nts-ke-client") {
-        let config_file = ntske_client.value_of("config_file").unwrap();
-        if let Err(err) = run_nts_ke_client(config_file) {
+        let address = ntske_client.value_of("address").unwrap();
+        if let Err(err) = run_nts_ke_client(address) {
             println!("Running client failed: {}", err);
         }
     }

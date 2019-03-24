@@ -13,7 +13,6 @@ use tokio_rustls::{
     TlsAcceptor,
 };
 
-use tokio::io;
 use tokio::net::TcpListener;
 use tokio::prelude::{AsyncRead, AsyncWrite, Future, Stream, Sink, stream};
 use tokio::codec::Framed;
@@ -41,7 +40,7 @@ fn gen_key(session: &rustls::ServerSession) -> Result<NTSKeys, TLSError> {
     let s2c_con = [0, 0, 0, 15, 01];
     let context_c2s = Some(&c2s_con[..]);
     let context_s2c = Some(&s2c_con[..]);
-    let label = "EXPORTER-nts/1".as_bytes();
+    let label = "EXPORTER-network-time-security/1".as_bytes();
     session.export_keying_material(&mut keys.c2s, label, context_c2s)?;
     session.export_keying_material(&mut keys.s2c, label, context_s2c)?;
 
@@ -52,17 +51,17 @@ fn response (keys: NTSKeys, master_key: Arc<RwLock<Vec<u8>>>) -> Vec<protocol::N
     let actual_key = master_key.read().unwrap();
     let cookie = cookie::make_cookie(keys, &actual_key);
     let mut response: Vec<protocol::NtsKeRecord> = Vec::new();
-    let mut aead_rec = protocol::NtsKeRecord {
+    let aead_rec = protocol::NtsKeRecord {
         critical: false,
         record_type: 4,
         contents: vec![0, 15],
     };
-    let mut end_rec = protocol::NtsKeRecord {
+    let end_rec = protocol::NtsKeRecord {
         critical: true,
         record_type: 0,
         contents: vec![],
     };
-    let mut cookie_rec = protocol::NtsKeRecord{
+    let cookie_rec = protocol::NtsKeRecord{
         critical: false,
         record_type: 5,
         contents: cookie,
