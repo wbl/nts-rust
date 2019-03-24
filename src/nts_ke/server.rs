@@ -2,6 +2,7 @@ use std::net::ToSocketAddrs;
 use std::sync::{Arc, RwLock};
 use std::vec::Vec;
 use std::string::String;
+use std::iter::IntoIterator;
 
 extern crate rustls;
 use crate::nts_ke::server::rustls::Session;
@@ -14,33 +15,14 @@ use tokio_rustls::{
 
 use tokio::io;
 use tokio::net::TcpListener;
-use tokio::prelude::{AsyncRead, AsyncWrite, Future, Stream};
+use tokio::prelude::{AsyncRead, AsyncWrite, Future, Stream, Sink, stream};
+use tokio::codec::Framed;
 
 use crate::config::parse_nts_ke_config;
 
 use crate::cookie;
 use crate::cookie::NTSKeys;
-
-struct NtsKeRecord {
-    critical: bool,
-    record_type: u16,
-    contents: Vec<u8>,
-}
-
-fn serialize_record(rec: &mut NtsKeRecord) -> Vec<u8> {
-    let mut out: Vec<u8> = Vec::new();
-    let our_type: u16;
-    if rec.critical {
-        our_type = 1 << 15 + rec.record_type;
-    } else {
-        our_type = rec.record_type;
-    }
-    out.extend(our_type.to_be_bytes().iter().clone());
-    let our_len = rec.contents.len() as u16;
-    out.extend(our_len.to_be_bytes().iter().clone());
-    out.append(&mut rec.contents);
-    return out;
-}
+use super::protocol;
 
 fn gen_key_from_channel<T: AsyncRead + AsyncWrite>(
     stream: tokio_rustls::server::TlsStream<T>,
@@ -66,29 +48,29 @@ fn gen_key(session: &rustls::ServerSession) -> Result<NTSKeys, TLSError> {
     Ok(keys)
 }
 
-fn response(keys: NTSKeys, master_key: Arc<RwLock<Vec<u8>>>) -> Vec<u8> {
+fn response (keys: NTSKeys, master_key: Arc<RwLock<Vec<u8>>>) -> Vec<protocol::NtsKeRecord> {
     let actual_key = master_key.read().unwrap();
     let cookie = cookie::make_cookie(keys, &actual_key);
-    let mut response: Vec<u8> = Vec::new();
-    let mut aead_rec = NtsKeRecord {
+    let mut response: Vec<protocol::NtsKeRecord> = Vec::new();
+    let mut aead_rec = protocol::NtsKeRecord {
         critical: false,
         record_type: 4,
         contents: vec![0, 15],
     };
-    let mut end_rec = NtsKeRecord {
+    let mut end_rec = protocol::NtsKeRecord {
         critical: true,
         record_type: 0,
         contents: vec![],
     };
-    let mut cookie_rec = NtsKeRecord {
+    let mut cookie_rec = protocol::NtsKeRecord{
         critical: false,
         record_type: 5,
         contents: cookie,
     };
 
-    response.append(&mut serialize_record(&mut aead_rec));
-    response.append(&mut serialize_record(&mut cookie_rec));
-    response.append(&mut serialize_record(&mut end_rec));
+    response.push(aead_rec);
+    response.push(cookie_rec);
+    response.push(end_rec);
     response
 }
 
@@ -121,14 +103,15 @@ pub fn start_nts_ke_server(config_filename: &str) {
         let real_key = real_key.clone();
         let done = config
             .accept(conn)
-            .and_then(|socket| {
-                let buf: Vec<u8> = Vec::new();
-                io::read_to_end(socket, buf)
+            .map(|socket | gen_key_from_channel(socket))
+            .and_then(|(socket, key)| {
+                let proto_sock = Framed::new(socket, protocol::NtsKeCodec{});
+                let resp = response(key, real_key);
+                let source_iter: std::vec::IntoIter<protocol::NtsKeRecord>  = resp.into_iter();
+                let answer_str = stream::iter_ok::<std::vec::IntoIter<protocol::NtsKeRecord>, std::io::Error>(source_iter);
+                proto_sock.send_all(answer_str)
             })
-            .map(|(socket, _buf)| gen_key_from_channel(socket))
-            .and_then(|(socket, key)| io::write_all(socket, response(key, real_key)))
-            .and_then(|(stream, _)| io::flush(stream))
-            .map(move |_| println!("Accept: {:?}", addr))
+            .map( move |_| println!("Successful connection!"))
             .map_err(move |err| println!("Error: {:?}-{:?}", err, addr));
         tokio::spawn(done);
         Ok(())

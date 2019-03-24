@@ -13,6 +13,7 @@ use clap::SubCommand;
 
 use crate::ntp::server::start_ntp_server;
 use crate::nts_ke::server::start_nts_ke_server;
+use crate::nts_ke::client::run_nts_ke_client;
 
 fn app() -> App<'static, 'static> {
     App::new("cf-nts")
@@ -25,6 +26,9 @@ fn app() -> App<'static, 'static> {
                 .arg(Arg::with_name("config_file").index(1).required(true)),
             SubCommand::with_name("ntp")
                 .about("Interfaces with NTP using UDP")
+                .arg(Arg::with_name("config_file").index(1).required(true)),
+            SubCommand::with_name("nts-ke-client")
+                .about("Run an NTS-KE client over TLS")
                 .arg(Arg::with_name("config_file").index(1).required(true)),
         ])
 }
@@ -47,6 +51,13 @@ fn main() {
         let config_file = ntp.value_of("config_file").unwrap();
         if let Err(err) = start_ntp_server(config_file) {
             println!("Starting UDP server failed: {}", err);
+        }
+    }
+
+    if let Some(ntske_client) = matches.subcommand_matches("nts-ke-client") {
+        let config_file = ntske_client.value_of("config_file").unwrap();
+        if let Err(err) = run_nts_ke_client(config_file) {
+            println!("Running client failed: {}", err);
         }
     }
 }
