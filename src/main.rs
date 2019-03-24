@@ -1,4 +1,6 @@
+#![feature(uniform_paths)]
 #[macro_use]
+
 extern crate futures;
 extern crate tokio;
 
