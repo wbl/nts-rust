@@ -67,7 +67,7 @@ fn response (keys: NTSKeys, master_key: Arc<RwLock<Vec<u8>>>) -> Vec<protocol::N
         contents: cookie,
     };
 
-    let next_rec = protoco::NtsKeRecord {
+    let next_rec = protocol::NtsKeRecord {
         critical: false,
         record_type: 4,
         contents: vec![0,0],
