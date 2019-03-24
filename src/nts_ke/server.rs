@@ -71,7 +71,7 @@ fn response (keys: NTSKeys, master_key: Arc<RwLock<Vec<u8>>>) -> Vec<protocol::N
         critical: false,
         record_type: 4,
         contents: vec![0,0],
-    }
+    };
 
     response.push(aead_rec);
     response.push(cookie_rec);
